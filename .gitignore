@@ -1,20 +1,33 @@
+# Dependencies
 node_modules/
-.expo/
+
+# Next.js
+.next/
+out/
+build/
 dist/
-web-build/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+
+# TypeScript
 *.tsbuildinfo
-.DS_Store
-*.log
-google-service-account.json
-GoogleService-Info.plist
-google-services.json
-ios/
-android/
+next-env.d.ts
+
+# Env
 .env
 .env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/dev/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Uploaded evidence (development)
+public/uploads/
