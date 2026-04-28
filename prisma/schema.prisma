@@ -1,0 +1,245 @@
+// SHIELD Platform — Prisma schema
+// Run: pnpm prisma db push  &&  pnpm db:seed
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // bcrypt hash
+  name      String
+  role      Role
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────
+// CLIENTS
+// ─────────────────────────────────────────────────────────
+
+model Client {
+  id         String      @id @default(cuid())
+  name       String
+  industry   String?
+  icon       String      @default("🏢") // emoji used in mockup
+  createdAt  DateTime    @default(now())
+  users      User[]
+  candidates Candidate[]
+}
+
+// ─────────────────────────────────────────────────────────
+// TESTS / CHECKS CATALOG
+// ─────────────────────────────────────────────────────────
+
+model Test {
+  id          String   @id // 't1', 't2', ... — stable IDs (rename-immune)
+  name        String
+  description String   @default("")
+  weight      Int      @default(5) // peso 1-20
+  scoreOk     Int      @default(100)
+  scoreObs    Int      @default(50)
+  scoreFail   Int      @default(-100)
+  price       Decimal  @default(0) @db.Decimal(10, 2)
+  blocking    Boolean  @default(false) // flag global; cada nivel también lo marca
+  // API integration (mockable)
+  apiEnabled  Boolean  @default(false)
+  apiUrl      String   @default("")
+  apiKey      String   @default("")
+  apiMethod   String   @default("GET")
+  apiParams   Json?
+  createdAt   DateTime @default(now())
+
+  levelTests LevelTest[]
+  results    TestResult[]
+}
+
+// ─────────────────────────────────────────────────────────
+// RISK LEVELS  (Básico → Estratégico)
+// ─────────────────────────────────────────────────────────
+
+model RiskLevel {
+  id              String   @id @default(cuid())
+  slug            String   @unique // basico, moderado, sensible, critico, estrategico
+  name            String
+  description     String   @default("")
+  icon            String // ⬜ 🔵 🟡 🔴 🟣
+  color           String // hex
+  thresholdOk     Int      @default(80) // % para "contratar"
+  thresholdObs    Int      @default(55) // % para "con observaciones"
+  order           Int      @default(0)
+  positions       Position[]
+  levelTests      LevelTest[]
+  candidates      Candidate[]
+}
+
+model Position {
+  id      String    @id @default(cuid())
+  name    String
+  levelId String
+  level   RiskLevel @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@index([levelId])
+}
+
+model LevelTest {
+  id       String    @id @default(cuid())
+  levelId  String
+  testId   String
+  blocking Boolean   @default(false)
+  level    RiskLevel @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  test     Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, testId])
+  @@index([levelId])
+  @@index([testId])
+}
+
+// ─────────────────────────────────────────────────────────
+// CANDIDATES
+// ─────────────────────────────────────────────────────────
+
+enum CandidateStatus {
+  REQUESTED // creado por cliente, aún sin trabajar
+  EVALUATING // ISEG está corriendo pruebas
+  CLOSED // dictamen final emitido
+}
+
+model Candidate {
+  id         String          @id @default(cuid())
+  code       String          @unique // SH-YYYY-NNNN
+  lastName   String
+  firstName  String
+  dni        String
+  birthdate  DateTime?
+  address    String          @default("")
+  positionName String        @default("") // free-text del puesto al momento del intake
+  industry   String          @default("")
+  phone      String          @default("")
+  facebook   String          @default("")
+  linkedin   String          @default("")
+  instagram  String          @default("")
+  otherSocial String         @default("")
+  notes      String          @default("")
+  evaluator  String          @default("")
+  date       DateTime        @default(now())
+  status     CandidateStatus @default(REQUESTED)
+  fromPortal Boolean         @default(true)
+
+  clientId   String
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Snapshot of risk level at intake (denormalized so renaming a Position doesn't break history).
+  levelId    String?
+  level      RiskLevel?      @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  jobs       JobHistory[]
+  results    TestResult[]
+  createdAt  DateTime        @default(now())
+
+  @@index([clientId])
+  @@index([levelId])
+  @@index([status])
+}
+
+model JobHistory {
+  id          String     @id @default(cuid())
+  candidateId String
+  candidate   Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  company     String
+  position    String
+  start       String     @default("") // YYYY-MM
+  end         String     @default("") // YYYY-MM o "Actual"
+  contact     String     @default("")
+  contactPhone String    @default("")
+  reason      String     @default("")
+
+  @@index([candidateId])
+}
+
+enum TestResultStatus {
+  PENDING
+  OK
+  OBS
+  FAIL
+}
+
+model TestResult {
+  id          String           @id @default(cuid())
+  candidateId String
+  testId      String
+  status      TestResultStatus @default(PENDING)
+  notes       String           @default("")
+  apiStatus   String?
+  apiResponse String?
+  evidenceUrl String?
+  evidenceName String?
+  evidenceSize Int?
+  evidenceType String?
+  evidenceUploadedAt DateTime?
+  // Price snapshot at the moment the test was assigned, for billing immutability
+  priceSnapshot Decimal       @default(0) @db.Decimal(10, 2)
+  blockingSnapshot Boolean    @default(false)
+  weightSnapshot Int          @default(5)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  test      Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, testId])
+  @@index([candidateId])
+  @@index([testId])
+}
+
+// ─────────────────────────────────────────────────────────
+// LIQUIDATIONS (monthly billing per client)
+// ─────────────────────────────────────────────────────────
+
+enum LiquidationStatus {
+  DRAFT
+  ISSUED
+  PAID
+}
+
+model Liquidation {
+  id        String            @id @default(cuid())
+  clientId  String
+  year      Int
+  month     Int // 1-12
+  currency  String            @default("USD")
+  status    LiquidationStatus @default(DRAFT)
+  notes     String            @default("")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([clientId, year, month])
+  @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────
+// SETTINGS (singleton)
+// ─────────────────────────────────────────────────────────
+
+model Setting {
+  key   String @id
+  value String
+}
