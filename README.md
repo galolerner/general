@@ -190,19 +190,8 @@ logo definitivo:
 
 ## Deploy
 
-### Vercel + Supabase (recomendado)
-
-1. Crear proyecto en [Supabase](https://supabase.com) → copiar `Connection string` (modo
-   *transaction*) a `DATABASE_URL`.
-2. Crear proyecto en [Vercel](https://vercel.com) apuntando a este repo.
-3. Setear envs en Vercel: `DATABASE_URL`, `AUTH_SECRET`, `ANTHROPIC_API_KEY`.
-4. Build command: `prisma generate && next build`. Output: standard.
-5. Después del primer deploy correr `npx prisma db push && npx tsx prisma/seed.ts` desde tu
-   máquina apuntando a la `DATABASE_URL` de prod.
-
-> **Heads-up sobre evidencias**: en MVP las evidencias suben a `public/uploads/` (filesystem).
-> En Vercel el filesystem es efímero. Para prod, cambiar `uploadEvidence()` por Supabase
-> Storage o S3 (~30 líneas de código).
+Guía completa paso a paso para Vercel + Supabase: **[`docs/DEPLOY.md`](./docs/DEPLOY.md)** —
+pensada para que el equipo de TI la pueda ejecutar sin contexto previo.
 
 ## Roadmap (post-MVP)
 
