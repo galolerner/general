@@ -4,6 +4,16 @@ App de seguimiento de hábitos para iOS y Android, lista para publicar en App St
 
 Stack: **React Native + Expo (managed) + TypeScript**, navegación con React Navigation, estado con Zustand, persistencia con AsyncStorage, notificaciones con `expo-notifications`.
 
+## Capturas
+
+| Onboarding | Home vacía | Crear hábito | Home con hábitos |
+|---|---|---|---|
+| ![Onboarding](docs/screenshots/01-onboarding.png) | ![Home empty](docs/screenshots/02-home-empty.png) | ![Create](docs/screenshots/03-create-empty.png) | ![Home 3 habits](docs/screenshots/05-home-three-habits.png) |
+
+| Dashboard | Detalle del hábito |
+|---|---|
+| ![Dashboard](docs/screenshots/07-dashboard.png) | ![Detail](docs/screenshots/08-detail.png) |
+
 ## Funcionalidades
 
 1. **Home simple** — tarjetas de hábito con toggle diario y contador de racha.
